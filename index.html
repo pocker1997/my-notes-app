@@ -810,7 +810,7 @@
         console.log('Saving to Supabase...');
         
         // Delete all existing notes for this user
-        await supabase
+        await supabaseClient
           .from('notes')
           .delete()
           .eq('user_id', currentUser.id);
@@ -830,7 +830,7 @@
         }));
 
         if (notesToSave.length > 0) {
-          const { error } = await supabase
+          const { error } = await supabaseClientClient
             .from('notes')
             .insert(notesToSave);
 
@@ -850,7 +850,7 @@
       if (!currentUser) return false;
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClientClient
           .from('notes')
           .select('*')
           .eq('user_id', currentUser.id)
