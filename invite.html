@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome!</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .welcome-screen {
+      text-align: center;
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+    }
+
+    .welcome-screen.fade-out {
+      opacity: 0;
+      transform: scale(1.1);
+    }
+
+    .welcome-text {
+      font-size: 64px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .error-screen {
+      text-align: center;
+      display: none;
+    }
+
+    .error-screen.show {
+      display: block;
+    }
+
+    .error-screen h1 {
+      font-size: 48px;
+      color: #ef4444;
+      margin-bottom: 16px;
+    }
+
+    .error-screen p {
+      color: #666;
+      font-size: 18px;
+    }
+
+    .loading {
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #666;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Перевірка запрошення...</div>
+  </div>
+
+  <div class="welcome-screen" id="welcomeScreen" style="display: none;">
+    <h1 class="welcome-text">Welcome!</h1>
+  </div>
+
+  <div class="error-screen" id="errorScreen">
+    <h1>Invalid Invite</h1>
+    <p>Це запрошення недійсне або вже використане</p>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://bcvecityvucxdorusjnk.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjdmVjaXR5dnVjeGRvcnVzam5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMzU4NTEsImV4cCI6MjA4NTgxMTg1MX0.W9s61SjrtcJCYdh_850CPKbBuZ_yQIfj_PypFB5MU88';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function processInvite() {
+      // Get invite code from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+
+      if (!code) {
+        showError();
+        return;
+      }
+
+      // Check if invite exists and is not used
+      const { data: invite, error: fetchError } = await supabase
+        .from('invites')
+        .select('*')
+        .eq('code', code)
+        .is('used_by', null)
+        .single();
+
+      if (fetchError || !invite) {
+        showError();
+        return;
+      }
+
+      // Create anonymous user
+      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+
+      if (authError) {
+        console.error('Auth error:', authError);
+        showError();
+        return;
+      }
+
+      const userId = authData.user.id;
+
+      // Mark invite as used
+      const { error: updateError } = await supabase
+        .from('invites')
+        .update({
+          used_by: userId,
+          used_at: new Date().toISOString()
+        })
+        .eq('code', code);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+      }
+
+      // Update profile with invite code
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ invite_code: code })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error('Profile error:', profileError);
+      }
+
+      // Show welcome animation
+      document.getElementById('loading').style.display = 'none';
+      const welcomeScreen = document.getElementById('welcomeScreen');
+      welcomeScreen.style.display = 'block';
+
+      // Fade out and redirect after 1.5 seconds
+      setTimeout(() => {
+        welcomeScreen.classList.add('fade-out');
+        setTimeout(() => {
+          window.location.href = '/notes.html';
+        }, 1500);
+      }, 1000);
+    }
+
+    function showError() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('errorScreen').classList.add('show');
+    }
+
+    // Start processing
+    processInvite();
+  </script>
+</body>
+</html>

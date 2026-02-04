@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Нотатки</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    body {
+      background: #f5f5f5;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .note-item {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .note-item.selecting {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .note-enter {
+      animation: slideInUp 200ms ease-out;
+    }
+
+    .date-divider {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .input-wrapper {
+      transition: box-shadow 150ms ease-out;
+    }
+
+    .input-wrapper:focus-within {
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    .send-button {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid #f02424;
+      background: linear-gradient(180deg, rgba(255, 58, 48, 1) 0%, rgba(240, 37, 37, 1) 100%);
+      box-shadow: 
+        inset 0px 4px 4px rgba(255, 255, 255, 0.15),
+        0px 4px 4px -3px rgba(199, 108, 108, 1),
+        0px 2px 4px rgba(148, 19, 0, 0.15);
+      transition: opacity 200ms ease-out, transform 150ms ease-out;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .send-button:hover:not(:disabled) {
+      background: linear-gradient(180deg, rgba(255, 58, 48, 0.9) 0%, rgba(240, 37, 37, 0.9) 100%);
+    }
+
+    .send-button:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .send-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    @media (min-width: 768px) {
+      .send-button {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 1rem;
+      }
+    }
+
+    .thinking-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      width: auto;
+      height: 2.75rem;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 200ms ease-out;
+    }
+
+    .thinking-indicator.visible {
+      opacity: 1;
+    }
+
+    .loader-bar {
+      width: 24px;
+      height: 100%;
+      background: linear-gradient(180deg, rgba(255, 58, 48, 1) 0%, rgba(240, 37, 37, 1) 100%);
+      animation: loaderGlow 1.5s ease-in-out infinite;
+      position: relative;
+    }
+
+    .loader-bar::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      background: inherit;
+      filter: blur(12px);
+      opacity: 0;
+      animation: loaderGlowEffect 1.5s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    .loader-bar:nth-child(1) {
+      animation-delay: 0s;
+      border-radius: 0.75rem 0 0 0.75rem;
+    }
+
+    .loader-bar:nth-child(1)::before {
+      animation-delay: 0s;
+      border-radius: 0.75rem 0 0 0.75rem;
+    }
+
+    .loader-bar:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loader-bar:nth-child(2)::before {
+      animation-delay: 0.2s;
+    }
+
+    .loader-bar:nth-child(3) {
+      animation-delay: 0.4s;
+      border-radius: 0 0.75rem 0.75rem 0;
+    }
+
+    .loader-bar:nth-child(3)::before {
+      animation-delay: 0.4s;
+      border-radius: 0 0.75rem 0.75rem 0;
+    }
+
+    @keyframes loaderGlow {
+      0%, 100% {
+        opacity: 0.2;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes loaderGlowEffect {
+      0%, 100% {
+        opacity: 0;
+      }
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .thinking-indicator {
+        height: 3.5rem;
+      }
+      
+      .loader-bar:nth-child(1) {
+        border-radius: 1rem 0 0 1rem;
+      }
+      
+      .loader-bar:nth-child(1)::before {
+        border-radius: 1rem 0 0 1rem;
+      }
+      
+      .loader-bar:nth-child(3) {
+        border-radius: 0 1rem 1rem 0;
+      }
+      
+      .loader-bar:nth-child(3)::before {
+        border-radius: 0 1rem 1rem 0;
+      }
+    }
+
+    .thinking-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 8px);
+      grid-template-rows: repeat(3, 8px);
+      gap: 2px;
+    }
+
+    .thinking-cell {
+      width: 8px;
+      height: 8px;
+      background: linear-gradient(to right, #f5deb8, #d4a574, #f5deb8);
+      opacity: 0.3;
+      animation: thinkingPulse 600ms ease-in-out infinite;
+    }
+
+    /* Wave animation with delays */
+    .thinking-cell:nth-child(1) { animation-delay: 0ms; }
+    .thinking-cell:nth-child(2) { animation-delay: 100ms; }
+    .thinking-cell:nth-child(3) { animation-delay: 200ms; }
+    .thinking-cell:nth-child(4) { animation-delay: 0ms; }
+    .thinking-cell:nth-child(5) { animation-delay: 100ms; }
+    .thinking-cell:nth-child(6) { animation-delay: 200ms; }
+    .thinking-cell:nth-child(7) { animation-delay: 0ms; }
+    .thinking-cell:nth-child(8) { animation-delay: 100ms; }
+    .thinking-cell:nth-child(9) { animation-delay: 200ms; }
+
+    @keyframes thinkingPulse {
+      0%, 100% {
+        opacity: 0.3;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
+    #notes-container {
+      scroll-behavior: smooth;
+    }
+
+    .note-item {
+      transition: opacity 150ms ease-out;
+      position: relative;
+    }
+
+    .note-item.selecting {
+      padding-left: 40px;
+    }
+
+    .note-item.selected {
+      background: rgba(124, 58, 237, 0.08);
+      border-radius: 8px;
+    }
+
+    .note-item.editing {
+      background: rgba(250, 204, 21, 0.1);
+      border-radius: 8px;
+      padding: 8px;
+      margin-left: -8px;
+      margin-right: -8px;
+    }
+
+    .input-wrapper.editing {
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+    }
+
+    .note-checkbox {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d1d5db;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 150ms ease-out;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .note-item.selecting .note-checkbox {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .note-checkbox.selected {
+      background: #7c3aed;
+      border-color: #7c3aed;
+    }
+
+    .note-checkbox.selected::after {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 3px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    /* Delete animation */
+    @keyframes noteDelete {
+      0% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: translateX(20px) scale(0.9);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(40px) scale(0.8);
+        max-height: 0;
+        margin: 0;
+        padding: 0;
+      }
+    }
+
+    .note-item.deleting {
+      animation: noteDelete 300ms ease-out forwards;
+    }
+
+    /* Action bar */
+    .action-bar {
+      position: fixed;
+      bottom: calc(88px + 48px); /* 88px input area + 48px gap */
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #000;
+      color: white;
+      padding: 12px 20px;
+      display: none; /* Hidden by default */
+      align-items: center;
+      gap: 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      transition: transform 200ms ease-out;
+      z-index: 50;
+      max-width: calc(100% - 32px);
+    }
+
+    .action-bar.visible {
+      display: flex;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .action-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .action-bar-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 150ms ease-out;
+      font-size: 14px;
+    }
+
+    .action-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px;
+    }
+
+    .toast {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: toastSlideIn 200ms ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .toast.hiding {
+      animation: toastSlideOut 200ms ease-out forwards;
+    }
+
+    @keyframes toastSlideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes toastSlideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+
+    .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: #7c3aed;
+      transition: width linear;
+    }
+
+    .toast-content {
+      flex: 1;
+      font-size: 14px;
+      color: #111;
+      font-weight: 500;
+    }
+
+    .toast-action {
+      padding: 6px 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 150ms ease-out;
+      border: none;
+      color: #111;
+    }
+
+    .toast-action:hover {
+      background: #e5e5e5;
+    }
+
+    /* Drawer */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms ease-out;
+      z-index: 60;
+    }
+
+    .drawer-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 16px 16px 0 0;
+      max-height: 85vh;
+      transform: translateY(100%);
+      transition: transform 300ms ease-out;
+      z-index: 61;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer.visible {
+      transform: translateY(0);
+    }
+
+    .drawer-handle {
+      width: 40px;
+      height: 4px;
+      background: #d1d5db;
+      border-radius: 2px;
+      margin: 12px auto 8px;
+    }
+
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px 24px;
+    }
+
+    /* Thread card stack */
+    .thread-stack {
+      position: relative;
+      width: 80%;
+      max-width: 400px;
+      height: 72px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .thread-card {
+      position: absolute;
+      width: 100%;
+      height: 56px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      padding: 8px 12px;
+      overflow: hidden;
+    }
+
+    .thread-card:nth-child(1) {
+      top: 0;
+      left: 0;
+      z-index: 3;
+    }
+
+    .thread-card:nth-child(2) {
+      top: 6px;
+      left: 6px;
+      z-index: 2;
+      background: #fafafa;
+    }
+
+    .thread-card:nth-child(3) {
+      top: 12px;
+      left: 12px;
+      z-index: 1;
+      background: #f5f5f5;
+    }
+
+    .thread-preview {
+      font-size: 13px;
+      line-height: 1.4;
+      color: #6b7280;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .task-highlight {
+      background: #e9d5ff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7c3aed;
+      font-weight: 600;
+    }
+
+    .checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      transition: all 150ms ease-out;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .checkbox:checked {
+      background: #7c3aed;
+      border-color: #7c3aed;
+    }
+
+    .checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .checkbox:hover {
+      border-color: #9ca3af;
+    }
+
+    .checkbox:checked:hover {
+      background: #6d28d9;
+      border-color: #6d28d9;
+    }
+
+    .task-text.completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    /* Question answers */
+    .question-answer {
+      margin-top: 8px;
+      margin-left: 40px; /* Align with checkbox (time width) */
+      width: 80%;
+      max-width: 400px;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 8px 12px;
+      border-left: 2px solid #e5e7eb;
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .answer-label {
+      color: #9ca3af;
+      font-size: 14px;
+      line-height: 1.5;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .answer-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: #111;
+      resize: none;
+      font-family: inherit;
+      line-height: 1.5;
+      min-height: 20px;
+    }
+
+    .answer-input::placeholder {
+      color: #9ca3af;
+    }
+
+    .answer-text {
+      flex: 1;
+      font-size: 14px;
+      color: #111;
+      line-height: 1.5;
+    }
+      margin-right: 4px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="h-dvh flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl h-dvh max-h-[900px] bg-white shadow-lg flex flex-col overflow-hidden">
+    
+    <!-- Notes feed -->
+    <div id="notes-container" class="flex-1 overflow-y-auto px-6 py-4">
+      <!-- Date dividers and notes will be inserted here -->
+    </div>
+
+    <!-- Input area -->
+    <div class="p-4 border-t border-gray-100">
+      <div class="input-wrapper flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-3">
+        <textarea
+          id="note-input"
+          placeholder="What's new?"
+          rows="1"
+          class="flex-1 resize-none outline-none text-[15px] text-gray-900 placeholder:text-gray-400 bg-transparent"
+          style="max-height: 120px; min-height: 24px; line-height: 24px;"
+        ></textarea>
+        <button
+          id="send-button"
+          disabled
+          class="send-button"
+          aria-label="Надіслати нотатку"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </button>
+        <div id="thinking-indicator" class="thinking-indicator" style="display: none;">
+          <div class="loader-bar"></div>
+          <div class="loader-bar"></div>
+          <div class="loader-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action bar for multiple selection -->
+  <div id="action-bar" class="action-bar">
+    <div class="action-bar-left">
+      <button id="cancel-selection" style="background: none; padding: 0; display: flex; align-items: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <span id="selection-count" style="font-weight: 500; font-size: 14px;">0 selected</span>
+    </div>
+    <div class="action-bar-right">
+      <button id="delete-selected" class="action-button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Delete
+      </button>
+      <button id="create-thread" class="action-button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Thread
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Drawer for thread view -->
+  <div id="drawer-overlay" class="drawer-overlay"></div>
+  <div id="drawer" class="drawer">
+    <div class="drawer-handle"></div>
+    <div style="padding: 0 24px 16px;">
+      <h2 style="font-size: 20px; font-weight: 600; color: #111;">Thread</h2>
+    </div>
+    <div id="drawer-content" class="drawer-content">
+      <!-- Thread notes will be inserted here -->
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // SUPABASE SETUP
+    // ============================================
+    const SUPABASE_URL = 'https://bcvecityvucxdorusjnk.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjdmVjaXR5dnVjeGRvcnVzam5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMzU4NTEsImV4cCI6MjA4NTgxMTg1MX0.W9s61SjrtcJCYdh_850CPKbBuZ_yQIfj_PypFB5MU88';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let currentUser = null;
+
+    // ============================================
+    // DOM ELEMENTS
+    // ============================================
+    const notesContainer = document.getElementById('notes-container');
+    const noteInput = document.getElementById('note-input');
+    const sendButton = document.getElementById('send-button');
+    const thinkingIndicator = document.getElementById('thinking-indicator');
+    const actionBar = document.getElementById('action-bar');
+    const cancelSelection = document.getElementById('cancel-selection');
+    const deleteSelected = document.getElementById('delete-selected');
+    const createThread = document.getElementById('create-thread');
+    const selectionCount = document.getElementById('selection-count');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const drawer = document.getElementById('drawer');
+    const drawerContent = document.getElementById('drawer-content');
+    const toastContainer = document.getElementById('toast-container');
+
+    let notes = [];
+    let dateGroups = {};
+    let selectionMode = false;
+    let selectedNotes = new Set();
+    let deletedNotes = [];
+    let threads = [];
+    let editingNoteId = null;
+    let editingOriginalText = null;
+
+    // ============================================
+    // SUPABASE FUNCTIONS
+    // ============================================
+    
+    // Check authentication
+    async function checkAuth() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      if (!session) {
+        // Not authenticated, redirect to invite
+        window.location.href = '/invite.html?code=demo';
+        return false;
+      }
+      
+      currentUser = session.user;
+      return true;
+    }
+
+    // Save to Supabase
+    async function saveToSupabase() {
+      if (!currentUser) return;
+
+      try {
+        console.log('Saving to Supabase...');
+        
+        // Delete all existing notes for this user
+        await supabase
+          .from('notes')
+          .delete()
+          .eq('user_id', currentUser.id);
+
+        // Insert all notes
+        const notesToSave = notes.map(note => ({
+          user_id: currentUser.id,
+          text: note.text,
+          date: note.date.toISOString(),
+          is_task: note.isTask || false,
+          is_question: note.isQuestion || false,
+          completed: note.completed || false,
+          answer: note.answer || null,
+          keywords: note.keywords || [],
+          is_thread: note.isThread || false,
+          thread_notes: note.isThread ? note.notes : null
+        }));
+
+        if (notesToSave.length > 0) {
+          const { error } = await supabase
+            .from('notes')
+            .insert(notesToSave);
+
+          if (error) {
+            console.error('Supabase save error:', error);
+          } else {
+            console.log('Saved to Supabase:', notesToSave.length, 'notes');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to save to Supabase:', error);
+      }
+    }
+
+    // Load from Supabase
+    async function loadFromSupabase() {
+      if (!currentUser) return false;
+
+      try {
+        const { data, error } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('date', { ascending: true });
+
+        if (error) {
+          console.error('Supabase load error:', error);
+          return false;
+        }
+
+        if (!data || data.length === 0) {
+          console.log('No data in Supabase');
+          return false;
+        }
+
+        notes = data.map(note => {
+          const loaded = {
+            id: note.id,
+            text: note.text,
+            date: new Date(note.date),
+            isTask: note.is_task,
+            isQuestion: note.is_question,
+            completed: note.completed,
+            answer: note.answer,
+            keywords: note.keywords || [],
+            isThread: note.is_thread
+          };
+
+          // If thread, restore nested notes
+          if (note.is_thread && note.thread_notes) {
+            loaded.notes = note.thread_notes.map(n => ({
+              ...n,
+              date: new Date(n.date)
+            }));
+          }
+
+          return loaded;
+        });
+
+        console.log('Loaded from Supabase:', notes.length, 'notes');
+        return true;
+      } catch (error) {
+        console.error('Failed to load from Supabase:', error);
+        return false;
+      }
+    }
+
+    // OLD localStorage functions (keeping as backup)
+    const STORAGE_KEY = 'notes-app-data';
+
+    // Save to localStorage
+    function saveToStorage() {
+      // Now saves to Supabase instead
+      saveToSupabase();
+      
+      // Also keep localStorage as backup
+      try {
+        const data = {
+          notes: notes.map(note => {
+            const saved = {
+              ...note,
+              date: note.date.getTime() // Convert Date to timestamp
+            };
+            // If thread, convert nested note dates too
+            if (note.isThread && note.notes) {
+              saved.notes = note.notes.map(n => ({
+                ...n,
+                date: n.date.getTime()
+              }));
+            }
+            return saved;
+          }),
+          version: 1
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        console.log('Saved to localStorage:', notes.length, 'notes');
+      } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+      }
+    }
+
+    // Load from localStorage
+    function loadFromStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+          console.log('No data in localStorage, loading demo notes');
+          return false;
+        }
+
+        const data = JSON.parse(stored);
+        notes = data.notes.map(note => {
+          const loaded = {
+            ...note,
+            date: new Date(note.date) // Convert timestamp back to Date
+          };
+          // If thread, convert nested note dates too
+          if (note.isThread && note.notes) {
+            loaded.notes = note.notes.map(n => ({
+              ...n,
+              date: new Date(n.date)
+            }));
+          }
+          return loaded;
+        });
+        
+        console.log('Loaded from localStorage:', notes.length, 'notes');
+        
+        // Re-save to fix any data format issues
+        saveToStorage();
+        
+        return true;
+      } catch (error) {
+        console.error('Failed to load from localStorage:', error);
+        // Clear corrupted data
+        localStorage.removeItem(STORAGE_KEY);
+        return false;
+      }
+    }
+
+    // Custom toast system
+    function showToast(message, options = {}) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      
+      const content = document.createElement('div');
+      content.className = 'toast-content';
+      content.textContent = message;
+      toast.appendChild(content);
+      
+      if (options.action) {
+        const actionBtn = document.createElement('button');
+        actionBtn.className = 'toast-action';
+        actionBtn.textContent = options.action.label;
+        actionBtn.addEventListener('click', () => {
+          options.action.onClick();
+          hideToast(toast);
+        });
+        toast.appendChild(actionBtn);
+      }
+      
+      // Progress bar
+      const progress = document.createElement('div');
+      progress.className = 'toast-progress';
+      progress.style.width = '100%';
+      toast.appendChild(progress);
+      
+      toastContainer.appendChild(toast);
+      
+      // Animate progress
+      const duration = options.duration || 5000;
+      setTimeout(() => {
+        progress.style.transition = `width ${duration}ms linear`;
+        progress.style.width = '0%';
+      }, 10);
+      
+      // Auto hide
+      const hideTimeout = setTimeout(() => {
+        hideToast(toast);
+      }, duration);
+      
+      // Clear timeout if manually dismissed
+      toast._hideTimeout = hideTimeout;
+    }
+
+    function hideToast(toast) {
+      if (toast._hideTimeout) {
+        clearTimeout(toast._hideTimeout);
+      }
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        toast.remove();
+      }, 200);
+    }
+
+    // Auto-resize textarea
+    noteInput.addEventListener('input', () => {
+      noteInput.style.height = 'auto';
+      noteInput.style.height = Math.min(noteInput.scrollHeight, 120) + 'px';
+      
+      // Enable/disable send button
+      sendButton.disabled = noteInput.value.trim() === '';
+    });
+
+    // Format date
+    function formatDate(date) {
+      const today = new Date();
+      const noteDate = new Date(date);
+      
+      const isToday = noteDate.toDateString() === today.toDateString();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const isYesterday = noteDate.toDateString() === yesterday.toDateString();
+      
+      if (isToday) return 'Today';
+      if (isYesterday) return 'Yesterday';
+      
+      const options = { weekday: 'short', month: 'short', day: 'numeric' };
+      return noteDate.toLocaleDateString('en-US', options);
+    }
+
+    // Format time
+    function formatTime(date) {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
+    // Get date key for grouping
+    function getDateKey(date) {
+      return date.toDateString();
+    }
+
+    // Render all notes
+    function renderNotes(preserveScroll = false) {
+      console.log('renderNotes called, notes with answers:', notes.filter(n => n.answer).map(n => ({id: n.id, answer: n.answer})));
+      // Save scroll position if needed
+      const scrollPos = preserveScroll ? notesContainer.scrollTop : null;
+      
+      notesContainer.innerHTML = '';
+      
+      // Group notes by date
+      dateGroups = {};
+      notes.forEach(note => {
+        const key = getDateKey(note.date);
+        if (!dateGroups[key]) {
+          dateGroups[key] = [];
+        }
+        dateGroups[key].push(note);
+      });
+
+      // Render groups
+      Object.keys(dateGroups).sort((a, b) => new Date(a) - new Date(b)).forEach(dateKey => {
+        const groupNotes = dateGroups[dateKey];
+        
+        // Date divider
+        const dateDivider = document.createElement('div');
+        dateDivider.className = 'date-divider text-center py-3 mb-4';
+        dateDivider.innerHTML = `
+          <span class="inline-block px-3 py-1 bg-white/80 rounded-full text-xs text-gray-500 font-medium">
+            ${formatDate(new Date(dateKey))}
+          </span>
+        `;
+        notesContainer.appendChild(dateDivider);
+
+        // Notes
+        groupNotes.forEach(note => {
+          const noteEl = document.createElement('div');
+          const isSelected = selectedNotes.has(note.id);
+          const className = `note-item mb-4 flex gap-3 ${selectionMode ? 'selecting' : ''} ${isSelected ? 'selected' : ''}`;
+          noteEl.className = className;
+          noteEl.setAttribute('data-note-id', note.id);
+          
+          // Selection checkbox - always create, show only in selection mode
+          const checkbox = document.createElement('div');
+          checkbox.className = `note-checkbox ${isSelected ? 'selected' : ''}`;
+          checkbox.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNoteSelection(note.id, checkbox);
+          });
+          noteEl.appendChild(checkbox);
+          
+          // Create time element
+          const timeEl = document.createElement('div');
+          timeEl.className = 'text-xs text-gray-400 font-medium pt-0.5 tabular-nums';
+          timeEl.style.minWidth = '40px';
+          timeEl.textContent = formatTime(note.date);
+          noteEl.appendChild(timeEl);
+          
+          // Thread display
+          if (note.isThread) {
+            // Sort notes by date to get oldest
+            const sortedNotes = [...note.notes].sort((a, b) => a.date - b.date);
+            const oldestNote = sortedNotes[0];
+            const previewText = oldestNote.isTask ? cleanTaskText(oldestNote.text) : oldestNote.text;
+            
+            // Wrapper for text and stack
+            const threadContent = document.createElement('div');
+            threadContent.className = 'flex-1';
+            
+            const textEl = document.createElement('div');
+            textEl.className = 'text-[15px] text-gray-700 leading-relaxed';
+            textEl.textContent = `Created thread with ${note.notes.length} notes`;
+            threadContent.appendChild(textEl);
+            
+            // Thread stack with preview on top card
+            const threadStack = document.createElement('div');
+            threadStack.className = 'thread-stack';
+            threadStack.setAttribute('data-thread-id', note.id);
+            
+            const topCard = document.createElement('div');
+            topCard.className = 'thread-card';
+            const preview = document.createElement('div');
+            preview.className = 'thread-preview';
+            preview.textContent = previewText;
+            topCard.appendChild(preview);
+            
+            const card2 = document.createElement('div');
+            card2.className = 'thread-card';
+            
+            const card3 = document.createElement('div');
+            card3.className = 'thread-card';
+            
+            threadStack.appendChild(topCard);
+            threadStack.appendChild(card2);
+            threadStack.appendChild(card3);
+            
+            threadStack.addEventListener('click', (e) => {
+              if (!e.shiftKey && !selectionMode) {
+                openThread(note);
+              }
+            });
+            
+            threadContent.appendChild(threadStack);
+            noteEl.appendChild(threadContent);
+          } else {
+            const displayText = note.isTask ? cleanTaskText(note.text) : note.text;
+            const highlightedText = highlightTaskText(displayText, note.isTask, note.keywords || []);
+            
+            if (note.isTask) {
+              const taskCheckbox = document.createElement('input');
+              taskCheckbox.type = 'checkbox';
+              taskCheckbox.className = 'checkbox';
+              taskCheckbox.checked = note.completed;
+              taskCheckbox.setAttribute('data-note-id', note.id);
+              taskCheckbox.addEventListener('change', () => {
+                toggleTaskCompletion(note.id);
+              });
+              noteEl.appendChild(taskCheckbox);
+              
+              const contentWrapper = document.createElement('div');
+              contentWrapper.className = 'flex-1';
+              
+              const textEl = document.createElement('div');
+              textEl.className = `text-[15px] text-gray-700 leading-relaxed text-pretty task-text ${note.completed ? 'completed' : ''}`;
+              textEl.innerHTML = highlightedText;
+              contentWrapper.appendChild(textEl);
+              
+              // Add answer field if it's also a question
+              if (note.isQuestion) {
+                const answerContainer = document.createElement('div');
+                answerContainer.className = 'question-answer';
+                answerContainer.style.marginLeft = '0'; // Already indented by wrapper
+                
+                // Always add label
+                const label = document.createElement('span');
+                label.className = 'answer-label';
+                label.textContent = 'Відповідь:';
+                answerContainer.appendChild(label);
+                
+                // Always show input field
+                const input = document.createElement('textarea');
+                input.className = 'answer-input';
+                input.value = note.answer || '';
+                input.placeholder = note.answer ? '' : 'Додати відповідь...';
+                input.rows = 1;
+                
+                // Auto-resize
+                input.addEventListener('input', () => {
+                  input.style.height = 'auto';
+                  input.style.height = input.scrollHeight + 'px';
+                });
+                
+                // Save on Enter
+                input.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    input.blur(); // Trigger save via blur
+                  } else if (e.key === 'Escape') {
+                    input.value = note.answer || ''; // Reset
+                    input.blur();
+                  }
+                });
+                
+                // Save on blur (losing focus)
+                input.addEventListener('blur', () => {
+                  const answer = input.value.trim();
+                  note.answer = answer || null;
+                  saveToStorage();
+                  console.log('Answer saved on blur for note', note.id, ':', answer);
+                });
+                
+                answerContainer.appendChild(input);
+                
+                // Set initial height
+                setTimeout(() => {
+                  input.style.height = 'auto';
+                  input.style.height = input.scrollHeight + 'px';
+                }, 0);
+                
+                contentWrapper.appendChild(answerContainer);
+              }
+              
+              noteEl.appendChild(contentWrapper);
+            } else {
+              // Wrap text in container for questions
+              const contentWrapper = document.createElement('div');
+              contentWrapper.className = 'flex-1';
+              
+              const textEl = document.createElement('div');
+              textEl.className = 'text-[15px] text-gray-700 leading-relaxed text-pretty';
+              textEl.innerHTML = escapeHtml(note.text);
+              contentWrapper.appendChild(textEl);
+              
+              // Add answer field if it's a question
+              if (note.isQuestion) {
+                const answerContainer = document.createElement('div');
+                answerContainer.className = 'question-answer';
+                answerContainer.style.marginLeft = '0'; // Reset since it's inside wrapper
+                
+                // Always add label
+                const label = document.createElement('span');
+                label.className = 'answer-label';
+                label.textContent = 'Відповідь:';
+                answerContainer.appendChild(label);
+                
+                // Always show input field
+                const input = document.createElement('textarea');
+                input.className = 'answer-input';
+                input.value = note.answer || '';
+                input.placeholder = note.answer ? '' : 'Додати відповідь...';
+                input.rows = 1;
+                
+                // Auto-resize
+                input.addEventListener('input', () => {
+                  input.style.height = 'auto';
+                  input.style.height = input.scrollHeight + 'px';
+                });
+                
+                // Save on Enter
+                input.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    input.blur(); // Trigger save via blur
+                  } else if (e.key === 'Escape') {
+                    input.value = note.answer || ''; // Reset
+                    input.blur();
+                  }
+                });
+                
+                // Save on blur (losing focus)
+                input.addEventListener('blur', () => {
+                  const answer = input.value.trim();
+                  note.answer = answer || null;
+                  saveToStorage();
+                  console.log('Answer saved on blur for note', note.id, ':', answer);
+                });
+                
+                answerContainer.appendChild(input);
+                
+                // Set initial height
+                setTimeout(() => {
+                  input.style.height = 'auto';
+                  input.style.height = input.scrollHeight + 'px';
+                }, 0);
+                
+                contentWrapper.appendChild(answerContainer);
+              }
+              
+              noteEl.appendChild(contentWrapper);
+            }
+          }
+          
+          // Long press for selection mode
+          let pressTimer;
+          const startPress = () => {
+            if (!selectionMode && !editingNoteId) {
+              pressTimer = setTimeout(() => {
+                // Select this note first
+                selectedNotes.add(note.id);
+                // Then enable selection mode (will re-render)
+                toggleSelectionMode(true);
+              }, 500);
+            }
+          };
+          
+          const cancelPress = () => {
+            clearTimeout(pressTimer);
+          };
+          
+          // Double click for editing (only for non-thread notes)
+          noteEl.addEventListener('dblclick', (e) => {
+            if (!note.isThread && !selectionMode) {
+              e.preventDefault();
+              startEditingNote(note.id);
+            }
+          });
+          
+          // Click with Shift for selection (works for all notes including threads)
+          noteEl.addEventListener('click', (e) => {
+            if (e.shiftKey) {
+              e.preventDefault();
+              if (!selectionMode) {
+                // Select this note first
+                selectedNotes.add(note.id);
+                // Then enable selection mode (will re-render)
+                toggleSelectionMode(true);
+              } else {
+                // Already in selection mode, just toggle
+                const checkbox = noteEl.querySelector('.note-checkbox');
+                if (checkbox) toggleNoteSelection(note.id, checkbox);
+              }
+            }
+          });
+          
+          noteEl.addEventListener('mousedown', startPress);
+          noteEl.addEventListener('mouseup', cancelPress);
+          noteEl.addEventListener('mouseleave', cancelPress);
+          noteEl.addEventListener('touchstart', startPress);
+          noteEl.addEventListener('touchend', cancelPress);
+          noteEl.addEventListener('touchcancel', cancelPress);
+          
+          notesContainer.appendChild(noteEl);
+        });
+      });
+
+      // Scroll to bottom or restore position
+      if (preserveScroll && scrollPos !== null) {
+        requestAnimationFrame(() => {
+          notesContainer.scrollTop = scrollPos;
+        });
+      } else {
+        scrollToBottom();
+      }
+    }
+
+    // Scroll to bottom
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        notesContainer.scrollTop = notesContainer.scrollHeight;
+      });
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Detect if text is a task using AI
+    async function isTaskText(text) {
+      // Check if starts with [] or [ ]
+      if (text.trim().startsWith('[]') || text.trim().startsWith('[ ]')) {
+        return true;
+      }
+      
+      // Use fallback instead of API for local files (CORS issue)
+      return getFallbackTaskDetection(text);
+      
+      /* Commented out AI detection due to CORS
+      // Use Claude API to detect if it's a task
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 10,
+            messages: [
+              { 
+                role: "user", 
+                content: `Is this text a task/todo/action item that needs to be done? Answer ONLY "yes" or "no".
+
+Examples of tasks:
+- "купити молоко" - yes
+- "зателефонувати Олені" - yes  
+- "забукати ресторан" - yes
+- "зарезервувати ресторан" - yes
+- "застелити ліжко" - yes
+- "зустріч о 15:00" - yes (it's an event/appointment)
+
+Examples of NOT tasks:
+- "сьогодні гарна погода" - no
+- "мені сподобався фільм" - no
+
+Text: "${text}"
+
+Answer (yes/no):` 
+              }
+            ],
+          })
+        });
+
+        const data = await response.json();
+        const answer = data.content[0].text.toLowerCase().trim();
+        console.log('Task detection for "' + text + '":', answer);
+        return answer.includes('yes');
+      } catch (error) {
+        console.error('AI detection failed, using fallback:', error);
+        return getFallbackTaskDetection(text);
+      }
+      */
+    }
+
+    // Fallback task detection
+    function getFallbackTaskDetection(text) {
+      const taskKeywords = [
+        'зробити', 'зробіть', 'купити', 'купіть', 'написати', 'написать',
+        'подзвонити', 'позвонить', 'відправити', 'відправіть', 'надіслати',
+        'замовити', 'забронювати', 'записатись', 'записаться', 'забукати',
+        'зарезервувати', 'застелити', 'зателефонувати', 'прибрати',
+        'todo', 'task', 'to do', 'need to', 'треба', 'потрібно', 'нужно'
+      ];
+      const lowerText = text.toLowerCase();
+      return taskKeywords.some(keyword => lowerText.includes(keyword));
+    }
+
+    // Extract task keywords using AI
+    async function extractTaskKeywords(text) {
+      // Use fallback for local files (CORS issue)
+      return getFallbackKeywords(text);
+      
+      /* Commented out AI extraction due to CORS
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 50,
+            messages: [
+              { 
+                role: "user", 
+                content: `Extract only the action words/verbs from this task (in original language, comma-separated, no explanations): "${text}"` 
+              }
+            ],
+          })
+        });
+
+        const data = await response.json();
+        const keywords = data.content[0].text
+          .toLowerCase()
+          .split(',')
+          .map(k => k.trim())
+          .filter(k => k && text.toLowerCase().includes(k));
+        
+        console.log('Extracted keywords:', keywords);
+        
+        // If AI didn't find any keywords, use fallback
+        if (keywords.length === 0) {
+          return getFallbackKeywords(text);
+        }
+        
+        return keywords;
+      } catch (error) {
+        console.error('Keyword extraction failed:', error);
+        return getFallbackKeywords(text);
+      }
+      */
+    }
+
+    // Fallback keyword detection
+    function getFallbackKeywords(text) {
+      const fallbackKeywords = [
+        'зробити', 'зробіть', 'купити', 'купіть', 'написати', 'написать',
+        'подзвонити', 'позвонить', 'відправити', 'відправіть', 'надіслати',
+        'замовити', 'забронювати', 'записатись', 'записаться', 'забукати',
+        'зарезервувати', 'застелити', 'зателефонувати', 'прибрати',
+        'todo', 'task', 'to do', 'need to', 'треба', 'потрібно', 'нужно'
+      ];
+      
+      const lowerText = text.toLowerCase();
+      return fallbackKeywords.filter(keyword => lowerText.includes(keyword));
+    }
+
+    // Clean task text (remove [] if present)
+    function cleanTaskText(text) {
+      return text.replace(/^\s*\[\s*\]\s*/, '').trim();
+    }
+
+    // Highlight task keywords
+    function highlightTaskText(text, isTask, keywords = []) {
+      if (!isTask || keywords.length === 0) return escapeHtml(text);
+      
+      // Sort by length descending to match longer phrases first
+      keywords.sort((a, b) => b.length - a.length);
+      
+      // Build regex pattern from keywords
+      const pattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      if (!pattern) return escapeHtml(text);
+      
+      const regex = new RegExp(`(${pattern})`, 'gi');
+      
+      // Split text by keywords
+      const parts = text.split(regex);
+      
+      // Build HTML - escape each part and wrap keywords
+      return parts.map(part => {
+        if (!part) return '';
+        
+        const lowerPart = part.toLowerCase();
+        const isKeyword = keywords.some(k => k.toLowerCase() === lowerPart);
+        
+        if (isKeyword) {
+          return `<span class="task-highlight">${escapeHtml(part)}</span>`;
+        }
+        return escapeHtml(part);
+      }).join('');
+    }
+
+    // Detect if text is a question
+    function isQuestion(text) {
+      return text.trim().includes('?');
+    }
+
+    // Save answer to question
+    function saveAnswer(noteId, answerText) {
+      console.log('saveAnswer called for', noteId, 'text:', answerText);
+      const note = notes.find(n => n.id === noteId);
+      if (note) {
+        console.log('Note found, current answer:', note.answer, '-> new:', answerText);
+        note.answer = answerText;
+        console.log('Note after save:', note);
+        renderNotes(true);
+        saveToStorage();
+      }
+    }
+
+    // Toggle task completion
+    function toggleTaskCompletion(noteId) {
+      const note = notes.find(n => n.id === noteId);
+      if (note && note.isTask) {
+        note.completed = !note.completed;
+        renderNotes();
+        
+        // Save to localStorage
+        saveToStorage();
+      }
+    }
+
+    // Start editing note
+    function startEditingNote(noteId) {
+      const note = notes.find(n => n.id === noteId);
+      if (!note || note.isThread) return;
+
+      editingNoteId = noteId;
+      editingOriginalText = note.text;
+      
+      noteInput.value = note.text;
+      noteInput.focus();
+      
+      // Adjust textarea height
+      noteInput.style.height = 'auto';
+      noteInput.style.height = Math.min(noteInput.scrollHeight, 120) + 'px';
+      
+      // Add editing class to input wrapper
+      document.querySelector('.input-wrapper').classList.add('editing');
+      
+      // Highlight the note being edited
+      document.querySelectorAll('.note-item').forEach(el => {
+        el.classList.remove('editing');
+        if (el.getAttribute('data-note-id') == noteId) {
+          el.classList.add('editing');
+        }
+      });
+      
+      sendButton.disabled = false;
+    }
+
+    // Cancel editing
+    function cancelEditing() {
+      if (editingNoteId !== null) {
+        editingNoteId = null;
+        editingOriginalText = null;
+        noteInput.value = '';
+        noteInput.style.height = 'auto';
+        document.querySelector('.input-wrapper').classList.remove('editing');
+        document.querySelectorAll('.note-item').forEach(el => {
+          el.classList.remove('editing');
+        });
+        sendButton.disabled = true;
+      }
+    }
+
+    // Update note after editing
+    async function updateNote() {
+      if (editingNoteId === null) return;
+
+      const text = noteInput.value.trim();
+      if (!text) {
+        cancelEditing();
+        return;
+      }
+
+      // Show loader
+      sendButton.style.opacity = '0';
+      setTimeout(() => {
+        sendButton.style.display = 'none';
+        thinkingIndicator.style.display = 'flex';
+        requestAnimationFrame(() => {
+          thinkingIndicator.classList.add('visible');
+        });
+      }, 200);
+      
+      noteInput.disabled = true;
+
+      // Re-analyze with AI if text changed
+      const note = notes.find(n => n.id === editingNoteId);
+      if (text !== editingOriginalText) {
+        const isTask = await isTaskText(text);
+        let keywords = [];
+        if (isTask) {
+          keywords = await extractTaskKeywords(text);
+        }
+        
+        note.text = text;
+        note.isTask = isTask;
+        note.keywords = keywords;
+      } else {
+        note.text = text;
+      }
+
+      renderNotes(true);
+      
+      // Hide loader
+      thinkingIndicator.classList.remove('visible');
+      setTimeout(() => {
+        thinkingIndicator.style.display = 'none';
+        sendButton.style.display = 'flex';
+        sendButton.style.opacity = '1';
+      }, 200);
+      
+      noteInput.value = '';
+      noteInput.style.height = 'auto';
+      noteInput.disabled = false;
+      sendButton.disabled = true;
+      
+      cancelEditing();
+      
+      showToast('Note updated');
+      
+      // Save to localStorage
+      saveToStorage();
+    }
+
+    // Toggle selection mode
+    function toggleSelectionMode(enable) {
+      selectionMode = enable;
+      if (enable) {
+        // Re-render notes to add checkboxes properly, preserve scroll
+        renderNotes(true);
+        // Update selection count to show action bar if needed
+        updateSelectionCount();
+      } else {
+        actionBar.classList.remove('visible');
+        selectedNotes.clear();
+        // Re-render to remove selecting class, preserve scroll
+        renderNotes(true);
+      }
+    }
+
+    // Update selection count
+    function updateSelectionCount() {
+      selectionCount.textContent = `${selectedNotes.size} selected`;
+      
+      // Show/hide action bar based on selection
+      if (selectedNotes.size > 0) {
+        actionBar.classList.add('visible');
+      } else {
+        actionBar.classList.remove('visible');
+      }
+    }
+
+    // Toggle note selection
+    function toggleNoteSelection(noteId, checkbox) {
+      const noteEl = document.querySelector(`[data-note-id="${noteId}"]`);
+      
+      if (selectedNotes.has(noteId)) {
+        selectedNotes.delete(noteId);
+        checkbox.classList.remove('selected');
+        if (noteEl) noteEl.classList.remove('selected');
+      } else {
+        selectedNotes.add(noteId);
+        checkbox.classList.add('selected');
+        if (noteEl) noteEl.classList.add('selected');
+      }
+      updateSelectionCount();
+    }
+
+    // Delete notes with animation
+    function deleteNotes(noteIds) {
+      const notesToDelete = notes.filter(n => noteIds.includes(n.id));
+      deletedNotes = notesToDelete;
+
+      // Animate deletion
+      noteIds.forEach(id => {
+        const noteEl = document.querySelector(`[data-note-id="${id}"]`)?.closest('.note-item');
+        if (noteEl) {
+          noteEl.classList.add('deleting');
+        }
+      });
+
+      // Remove from data after animation
+      setTimeout(() => {
+        notes = notes.filter(n => !noteIds.includes(n.id));
+        renderNotes(true);
+        toggleSelectionMode(false);
+
+        // Save to localStorage
+        saveToStorage();
+
+        // Show toast with undo
+        showToast(`${noteIds.length} note${noteIds.length > 1 ? 's' : ''} deleted`, {
+          duration: 5000,
+          action: {
+            label: 'Undo',
+            onClick: () => undoDelete()
+          }
+        });
+      }, 300);
+    }
+
+    // Undo delete
+    function undoDelete() {
+      if (deletedNotes.length > 0) {
+        notes.push(...deletedNotes);
+        notes.sort((a, b) => a.date - b.date);
+        deletedNotes = [];
+        renderNotes(true);
+        
+        // Save to localStorage
+        saveToStorage();
+      }
+    }
+
+    // Create thread from selected notes
+    function createThreadFromSelection() {
+      if (selectedNotes.size < 2) {
+        showToast('Select at least 2 notes to create a thread');
+        return;
+      }
+
+      const threadNotes = notes.filter(n => selectedNotes.has(n.id));
+      const thread = {
+        id: Date.now(),
+        date: new Date(),
+        notes: threadNotes,
+        isThread: true
+      };
+
+      threads.push(thread);
+      
+      // Remove original notes
+      notes = notes.filter(n => !selectedNotes.has(n.id));
+      
+      // Add thread as a note
+      notes.push(thread);
+      
+      renderNotes(true);
+      toggleSelectionMode(false);
+
+      showToast('Thread created');
+      
+      // Save to localStorage
+      saveToStorage();
+    }
+
+    // Open thread drawer
+    function openThread(thread) {
+      drawerContent.innerHTML = '';
+      
+      thread.notes.forEach(note => {
+        const noteContainer = document.createElement('div');
+        noteContainer.className = 'mb-4';
+        
+        const noteEl = document.createElement('div');
+        noteEl.className = 'flex gap-3';
+        
+        const displayText = note.isTask ? cleanTaskText(note.text) : note.text;
+        const highlightedText = highlightTaskText(displayText, note.isTask, note.keywords || []);
+        
+        // Time
+        const timeEl = document.createElement('div');
+        timeEl.className = 'text-xs text-gray-400 font-medium pt-0.5 tabular-nums';
+        timeEl.style.minWidth = '40px';
+        timeEl.textContent = formatTime(note.date);
+        noteEl.appendChild(timeEl);
+        
+        if (note.isTask) {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'checkbox';
+          checkbox.checked = note.completed;
+          checkbox.disabled = true;
+          noteEl.appendChild(checkbox);
+          
+          const textEl = document.createElement('div');
+          textEl.className = `flex-1 text-[15px] text-gray-700 leading-relaxed text-pretty ${note.completed ? 'task-text completed' : ''}`;
+          textEl.innerHTML = highlightedText;
+          noteEl.appendChild(textEl);
+        } else {
+          const textEl = document.createElement('div');
+          textEl.className = 'flex-1 text-[15px] text-gray-700 leading-relaxed text-pretty';
+          textEl.innerHTML = escapeHtml(note.text);
+          noteEl.appendChild(textEl);
+        }
+        
+        noteContainer.appendChild(noteEl);
+        
+        // Add answer field if question (same as in main feed)
+        if (note.isQuestion) {
+          const answerContainer = document.createElement('div');
+          answerContainer.className = 'question-answer';
+          
+          // Always add label
+          const label = document.createElement('span');
+          label.className = 'answer-label';
+          label.textContent = 'Відповідь:';
+          answerContainer.appendChild(label);
+          
+          // Always show input field
+          const input = document.createElement('textarea');
+          input.className = 'answer-input';
+          input.value = note.answer || '';
+          input.placeholder = note.answer ? '' : 'Додати відповідь...';
+          input.rows = 1;
+          
+          input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
+          });
+          
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              input.blur(); // Trigger save via blur
+            } else if (e.key === 'Escape') {
+              input.value = note.answer || '';
+              input.blur();
+            }
+          });
+          
+          input.addEventListener('blur', () => {
+            const answer = input.value.trim();
+            note.answer = answer || null;
+            saveToStorage();
+            console.log('Drawer answer saved on blur for note', note.id, ':', answer);
+            // Don't re-render drawer to avoid losing focus
+          });
+          
+          answerContainer.appendChild(input);
+          
+          setTimeout(() => {
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
+          }, 0);
+          
+          noteContainer.appendChild(answerContainer);
+        }
+        
+        drawerContent.appendChild(noteContainer);
+      });
+
+      drawerOverlay.classList.add('visible');
+      drawer.classList.add('visible');
+    }
+
+    // Close drawer
+    function closeDrawer() {
+      drawerOverlay.classList.remove('visible');
+      drawer.classList.remove('visible');
+    }
+
+    // Add note
+    async function addNote() {
+      // If editing, update instead
+      if (editingNoteId !== null) {
+        await updateNote();
+        return;
+      }
+
+      const text = noteInput.value.trim();
+      if (!text) return;
+
+      // Smooth transition: fade out button, fade in loader
+      sendButton.style.opacity = '0';
+      setTimeout(() => {
+        sendButton.style.display = 'none';
+        thinkingIndicator.style.display = 'flex';
+        requestAnimationFrame(() => {
+          thinkingIndicator.classList.add('visible');
+        });
+      }, 200);
+      
+      noteInput.disabled = true;
+
+      // Detect if it's a task using AI
+      const isTask = await isTaskText(text);
+      
+      // Extract keywords if it's a task
+      let keywords = [];
+      if (isTask) {
+        keywords = await extractTaskKeywords(text);
+      }
+
+      // Create note object
+      const note = {
+        id: Date.now(),
+        text: text,
+        date: new Date(),
+        isTask: isTask,
+        completed: false,
+        keywords: keywords,
+        isQuestion: isQuestion(text),
+        answer: null
+      };
+      
+      notes.push(note);
+      
+      // Re-render to add event listeners properly (preserve scroll)
+      renderNotes(false); // Don't preserve scroll for new notes - want to scroll to bottom
+      
+      // Smooth transition: fade out loader, fade in button
+      thinkingIndicator.classList.remove('visible');
+      setTimeout(() => {
+        thinkingIndicator.style.display = 'none';
+        sendButton.style.display = 'flex';
+        sendButton.style.opacity = '1';
+      }, 200);
+      
+      noteInput.value = '';
+      noteInput.style.height = 'auto';
+      noteInput.disabled = false;
+      sendButton.disabled = true;
+      noteInput.focus();
+      
+      // Save to localStorage
+      saveToStorage();
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', addNote);
+    
+    noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        addNote();
+      }
+    });
+
+    // Selection mode event listeners
+    cancelSelection.addEventListener('click', () => toggleSelectionMode(false));
+    
+    deleteSelected.addEventListener('click', () => {
+      if (selectedNotes.size > 0) {
+        deleteNotes(Array.from(selectedNotes));
+      }
+    });
+    
+    createThread.addEventListener('click', () => {
+      createThreadFromSelection();
+    });
+
+    // Drawer event listeners
+    drawerOverlay.addEventListener('click', closeDrawer);
+    
+    drawer.addEventListener('click', (e) => {
+      if (e.target === drawer) closeDrawer();
+    });
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (drawer.classList.contains('visible')) {
+          closeDrawer();
+        } else if (editingNoteId !== null) {
+          cancelEditing();
+        } else if (selectionMode) {
+          toggleSelectionMode(false);
+        }
+      }
+    });
+
+    // Load demo notes
+    function loadDemoNotes() {
+      const demoText = "It starts with the Web Audio API. This is the backbone of all the sounds. It's what lets you generate audio programmatically in the browser without needing audio files. It's been available across browsers since April 2021 and works on everything modern.";
+      
+      const now = new Date();
+      
+      // Add some notes from today
+      [
+        { time: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 55), text: demoText, isTask: false, completed: false, keywords: [] },
+        { time: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 9), text: demoText, isTask: false, completed: false, keywords: [] },
+        { time: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 11), text: demoText, isTask: false, completed: false, keywords: [] },
+        { time: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 12), text: demoText, isTask: false, completed: false, keywords: [] }
+      ].forEach(item => {
+        notes.push({
+          id: item.time.getTime(),
+          text: item.text,
+          date: item.time,
+          isTask: item.isTask,
+          completed: item.completed,
+          keywords: item.keywords
+        });
+      });
+      
+      renderNotes();
+    }
+
+    // Initialize
+    async function init() {
+      // Check if user is authenticated
+      const isAuth = await checkAuth();
+      if (!isAuth) return;
+
+      // Load notes from Supabase
+      const hasData = await loadFromSupabase();
+      
+      if (!hasData) {
+        // No saved data, start with empty feed (no demo notes for new users)
+        console.log('Starting with empty feed');
+      }
+      
+      // Render notes
+      renderNotes();
+      noteInput.focus();
+    }
+
+    // Start app
+    init();
+  </script>
+</body>
+</html>
