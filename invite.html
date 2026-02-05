@@ -131,8 +131,22 @@
         return;
       }
 
-      // Create anonymous user
-      const { data: authData, error: authError } = await supabaseClient.auth.signInAnonymously();
+      // Create user with email/password
+      // Email: invite-{code}@notes.app
+      // Password: {code}
+      const email = `invite-${code}@notes.app`;
+      const password = code;
+
+      const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            invite_code: code
+          }
+        }
+      });
 
       if (authError) {
         console.error('Auth error:', authError);
@@ -174,7 +188,7 @@
       setTimeout(() => {
         welcomeScreen.classList.add('fade-out');
         setTimeout(() => {
-          window.location.href = '/notes.html';
+          window.location.href = '/';
         }, 1500);
       }, 1000);
     }
