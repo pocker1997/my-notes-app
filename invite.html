@@ -106,7 +106,7 @@
     const SUPABASE_URL = 'https://bcvecityvucxdorusjnk.supabaseClient.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjdmVjaXR5dnVjeGRvcnVzam5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMzU4NTEsImV4cCI6MjA4NTgxMTg1MX0.W9s61SjrtcJCYdh_850CPKbBuZ_yQIfj_PypFB5MU88';
 
-    const supabaseClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function processInvite() {
       // Get invite code from URL
