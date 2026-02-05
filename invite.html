@@ -103,10 +103,10 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://bcvecityvucxdorusjnk.supabase.co';
+    const SUPABASE_URL = 'https://bcvecityvucxdorusjnk.supabaseClient.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjdmVjaXR5dnVjeGRvcnVzam5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMzU4NTEsImV4cCI6MjA4NTgxMTg1MX0.W9s61SjrtcJCYdh_850CPKbBuZ_yQIfj_PypFB5MU88';
 
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function processInvite() {
       // Get invite code from URL
@@ -119,7 +119,7 @@
       }
 
       // Check if invite exists and is not used
-      const { data: invite, error: fetchError } = await supabase
+      const { data: invite, error: fetchError } = await supabaseClient
         .from('invites')
         .select('*')
         .eq('code', code)
@@ -143,7 +143,7 @@
       const userId = authData.user.id;
 
       // Mark invite as used
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseClient
         .from('invites')
         .update({
           used_by: userId,
@@ -156,7 +156,7 @@
       }
 
       // Update profile with invite code
-      const { error: profileError } = await supabase
+      const { error: profileError } = await supabaseClient
         .from('profiles')
         .update({ invite_code: code })
         .eq('id', userId);
