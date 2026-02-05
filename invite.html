@@ -154,6 +154,23 @@
         return;
       }
 
+      // If user already exists, just sign in
+      if (authData.user && !authData.session) {
+        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+        
+        if (signInError) {
+          console.error('Sign in error:', signInError);
+          showError();
+          return;
+        }
+        
+        authData.user = signInData.user;
+        authData.session = signInData.session;
+      }
+
       const userId = authData.user.id;
 
       // Mark invite as used
