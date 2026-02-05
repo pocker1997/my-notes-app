@@ -143,7 +143,8 @@
         options: {
           emailRedirectTo: window.location.origin,
           data: {
-            invite_code: code
+            invite_code: code,
+            email_verified: true
           }
         }
       });
@@ -154,21 +155,26 @@
         return;
       }
 
-      // If user already exists, just sign in
-      if (authData.user && !authData.session) {
-        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
+      // Wait for session to be created
+      if (!authData.session) {
+        console.log('No session after signup, waiting...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        if (signInError) {
-          console.error('Sign in error:', signInError);
-          showError();
-          return;
+        // Try to get session
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        if (!sessionData.session) {
+          console.error('Still no session, trying manual sign in');
+          const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+          
+          if (signInError) {
+            console.error('Sign in error:', signInError);
+            showError();
+            return;
+          }
         }
-        
-        authData.user = signInData.user;
-        authData.session = signInData.session;
       }
 
       const userId = authData.user.id;
